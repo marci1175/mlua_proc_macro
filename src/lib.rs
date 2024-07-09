@@ -1,58 +1,40 @@
+#![feature(proc_macro_quote)]
 use proc_macro::TokenTree::Group;
 use proc_macro::{TokenStream, TokenTree};
+use quote::quote;
+use syn::{Fields, ItemStruct};
 
 #[proc_macro_derive(ToTable)]
-pub fn convert_to_table(input: TokenStream) -> TokenStream {
-    let mut field_pairs: Vec<(TokenTree, TokenTree)> = Vec::new();
-    let struct_name: TokenTree = input.clone().into_iter().nth(1).unwrap();
+pub fn convert_to_table(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    convert_to_table_impl(syn::parse_macro_input!(input)).into()
+}
 
-    for token in input {
-        match token {
-            //The struct fields
-            Group(group) => {
-                let mut last_token: Option<TokenTree> = None;
+fn convert_to_table_impl(input: ItemStruct) -> proc_macro::TokenStream {
+    let Fields::Named(fields) = &input.fields else {
+        return quote!(compile_error!("expected struct with named fields");).into();
+    };
 
-                for inner_item in group.stream().into_iter().step_by(2) {
-                    if let Some(token) = &last_token {
-                        field_pairs.push((token.clone(), inner_item));
-
-                        last_token = None;
-                    } else {
-                        last_token = Some(inner_item);
-                    }
-                }
-            }
-            _ => {}
+    let mut statements = vec![];
+    for field in &fields.named {
+        let ident = field.ident.as_ref().unwrap();
+        let string = ident.to_string();
+        let statement = quote! {
+            table.set(#string, self.#ident);
         };
+        statements.push(statement);
     }
 
-    let table_fields = field_pairs
-        .iter()
-        .map(|(name, _)| {
-            format!(
-                r#"table.set("{}", self.{}).unwrap();"#,
-                name.to_string(),
-                name.to_string()
-            )
-        })
-        .collect::<Vec<String>>()
-        .join("\n");
+    let name = &input.ident;
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
-    format!(
-        r#"impl {} {{
-        fn set_table_from_struct(&self, lua: &mlua::Lua) {{
-
-            let table = lua.create_table().unwrap();
-
-            {}
-
-            lua.globals().set("vars", table).unwrap();
-        }}
-    }}
-    "#,
-        struct_name.to_string(),
-        table_fields
-    )
-    .parse()
-    .unwrap()
+    quote! {
+        impl #impl_generics #name #ty_generics #where_clause {
+            fn set_table_from_struct(&self, lua: &mlua::Lua) {
+                let table = lua.create_table().unwrap();
+                #(#statements)*
+                lua.globals().set("vars", table).unwrap();
+            }
+        }
+    }
+    .into()
 }
