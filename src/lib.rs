@@ -1,7 +1,8 @@
+use proc_macro::TokenStream;
 use quote::quote;
 use syn::{Fields, ItemStruct};
 
-#[proc_macro_derive(ToTable)]
+#[proc_macro_derive(ToTable, attributes(skip_table_entry))]
 pub fn convert_to_table(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     convert_to_table_impl(syn::parse_macro_input!(input)).into()
 }
@@ -12,12 +13,19 @@ fn convert_to_table_impl(input: ItemStruct) -> proc_macro::TokenStream {
     };
 
     let mut statements = vec![];
+
     for field in &fields.named {
+        //If there was the skip attr present we continue, so that we dont generate code for this field
+        if let Some(_) = field.attrs.get(0) {
+            continue;
+        }
+
         let ident = field.ident.as_ref().unwrap();
         let string = ident.to_string();
         let statement = quote! {
             table.set(#string, self.#ident);
         };
+
         statements.push(statement);
     }
 
