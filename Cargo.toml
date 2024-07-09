@@ -2,6 +2,8 @@
 name = "mlua_proc_macro"
 version = "0.1.0"
 edition = "2021"
+description = "This crate is to be used in Matthias for creating lua tables with proc macros"
+license = "MIT"
 
 [lib]
 proc-macro = true
