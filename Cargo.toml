@@ -1,0 +1,11 @@
+[package]
+name = "mlua_proc_macro"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc_macro = true
+
+[dependencies]
+anyhow = "1.0.86"
+mlua = {version = "0.9.9", features = ["vendored", "luajit"]}
