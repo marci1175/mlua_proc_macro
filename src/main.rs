@@ -1,5 +1,6 @@
 use mlua::{FromLua, Lua, Table};
 use mlua_proc_macro::ToTable;
+use quote::quote;
 
 #[derive(ToTable)]
 struct Application {

@@ -1,6 +1,3 @@
-#![feature(proc_macro_quote)]
-use proc_macro::TokenTree::Group;
-use proc_macro::{TokenStream, TokenTree};
 use quote::quote;
 use syn::{Fields, ItemStruct};
 
@@ -38,3 +35,4 @@ fn convert_to_table_impl(input: ItemStruct) -> proc_macro::TokenStream {
     }
     .into()
 }
+
