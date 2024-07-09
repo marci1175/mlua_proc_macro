@@ -1,5 +1,5 @@
-use mlua::{FromLua, Lua};
-use mlua_test::ToTable;
+use mlua::{FromLua, Lua, Table};
+use mlua_proc_macro::ToTable;
 
 #[derive(ToTable)]
 struct Application {
@@ -15,18 +15,14 @@ impl Application {
         loop {
             self.set_global_table(lua)?;
 
-            // lua.load(r#"print(global.frame_count)"#).exec()?;
+            lua.load(r#"print(vars.frame_count)"#).exec()?;
 
             self.frame_count += 1;
         }
     }
 
     pub fn set_global_table(&self, lua: &Lua) -> Result<(), anyhow::Error> {
-        let global_table = lua.create_table()?;
-
-        global_table.set("frame_count", self.frame_count)?;
-
-        lua.globals().set("global", global_table)?;
+        self.set_table_from_struct(&lua);
 
         Ok(())
     }
