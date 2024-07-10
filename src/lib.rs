@@ -1,10 +1,9 @@
-use proc_macro::TokenStream;
 use quote::quote;
 use syn::{Fields, ItemStruct};
 
-#[proc_macro_derive(ToTable, attributes(skip_table_entry))]
+#[proc_macro_derive(ToTable, attributes(table))]
 pub fn convert_to_table(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    convert_to_table_impl(syn::parse_macro_input!(input)).into()
+    convert_to_table_impl(syn::parse_macro_input!(input))
 }
 
 fn convert_to_table_impl(input: ItemStruct) -> proc_macro::TokenStream {
@@ -16,14 +15,29 @@ fn convert_to_table_impl(input: ItemStruct) -> proc_macro::TokenStream {
 
     for field in &fields.named {
         //If there was the skip attr present we continue, so that we dont generate code for this field
-        if let Some(_) = field.attrs.get(0) {
-            continue;
+        for attr in &field.attrs {
+            if attr.path().is_ident("table") {
+                let mut should_skip = false;
+
+                attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident("skip") {
+                        should_skip = true;
+                    }
+
+                    Ok(())
+                })
+                .unwrap();
+
+                if should_skip {
+                    continue;
+                }
+            }
         }
 
         let ident = field.ident.as_ref().unwrap();
         let string = ident.to_string();
         let statement = quote! {
-            table.set(#string, self.#ident);
+            table.set(#string, serde_json::to_string(&self.#ident).unwrap());
         };
 
         statements.push(statement);
@@ -43,4 +57,3 @@ fn convert_to_table_impl(input: ItemStruct) -> proc_macro::TokenStream {
     }
     .into()
 }
-
