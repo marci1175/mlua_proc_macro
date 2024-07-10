@@ -13,7 +13,7 @@ fn convert_to_table_impl(input: ItemStruct) -> proc_macro::TokenStream {
 
     let mut statements = vec![];
 
-    for field in &fields.named {
+    'field_gen: for field in &fields.named {
         //If there was the skip attr present we continue, so that we dont generate code for this field
         for attr in &field.attrs {
             //We can manually skip an entry or if there is a serde skip ettribute that means that it cant be turned into a lua table entry anyway
@@ -34,7 +34,7 @@ fn convert_to_table_impl(input: ItemStruct) -> proc_macro::TokenStream {
 
                 //If we should skip this entry
                 if should_skip {
-                    continue;
+                    continue 'field_gen;
                 }
             }
         }
