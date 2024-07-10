@@ -1,6 +1,6 @@
 [package]
 name = "mlua_proc_macro"
-version = "0.1.4"
+version = "0.1.3"
 edition = "2021"
 description = "This crate is used to convert structs into lua tables with mlua"
 license = "MIT"
