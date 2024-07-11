@@ -1,5 +1,5 @@
 use quote::quote;
-use syn::{Fields, ItemStruct};
+use syn::{spanned::Spanned, Fields, ItemStruct};
 
 #[proc_macro_derive(ToTable, attributes(table))]
 pub fn convert_to_table(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -14,27 +14,39 @@ fn convert_to_table_impl(input: ItemStruct) -> proc_macro::TokenStream {
     let mut statements = vec![];
 
     'field_gen: for field in &fields.named {
+        //If BOTH are true then that means that there is invalid use of the attributes, and we should create a compiler error
+
+        //This is set to true by the closure if we want to skip this entry
+        let mut should_skip = false;
+        //This is set to true by the closure if we want to save this entry
+        let mut should_save = false;
+
         //If there was the skip attr present we continue, so that we dont generate code for this field
         for attr in &field.attrs {
             //We can manually skip an entry or if there is a serde skip ettribute that means that it cant be turned into a lua table entry anyway
             if attr.path().is_ident("table") || attr.path().is_ident("serde") {
-
-                //This is set to true by the closure if we want to skip this entry
-                let mut should_skip = false;
-
                 //Check if there is a skip attribute in the table or serde attribute
-                attr.parse_nested_meta(|meta| {
+                match attr.parse_nested_meta(|meta| {
                     if meta.path.is_ident("save") {
                         //If the user wants to save then we let them xd
-                        return Ok(());
+                        should_save = true;
+                        if should_save && should_skip {
+                            return Err(syn::Error::new(attr.span(), "You can only save or skip a field."));
+                        }
                     }
                     if meta.path.is_ident("skip") {
                         should_skip = true;
+                        if should_save && should_skip {
+                            return Err(syn::Error::new(attr.span(), "You can only save or skip a field."));
+                        }
                     }
 
                     Ok(())
                 })
-                .unwrap();
+                {
+                    Ok(_) => {},
+                    Err(_) => {return quote!(compile_error!("You can only save or skip a field.");).into()}
+                };
 
                 //If we should skip this entry
                 if should_skip {
