@@ -5,7 +5,6 @@ use mlua_proc_macro::ToTable;
 struct Application {
     frame_count: i64,
 
-    #[serde(skip)]
     #[table(save)]
     info: Info,
 
@@ -30,7 +29,7 @@ impl Application {
         loop {
             self.set_table_from_struct(lua);
 
-            // lua.load(r#"print(info["name"])"#).exec()?;
+            lua.load(r#"print(application.info)"#).exec()?;
 
             self.frame_count += 1;
         }

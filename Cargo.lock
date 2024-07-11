@@ -138,7 +138,7 @@ dependencies = [
 
 [[package]]
 name = "mlua_proc_macro"
-version = "0.1.8"
+version = "0.1.10"
 dependencies = [
  "anyhow",
  "mlua",

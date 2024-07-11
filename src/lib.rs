@@ -20,6 +20,8 @@ fn convert_to_table_impl(input: ItemStruct) -> proc_macro::TokenStream {
         let mut should_skip = false;
         //This is set to true by the closure if we want to save this entry
         let mut should_save = false;
+        //This is set to true if the user has skipped the serde serialization, this means that we would skip this table entry, but if the user manually saves it by ```#[table(save)]``` we save that entry
+        let mut should_skip_serde = false;
 
         //If there was the skip attr present we continue, so that we dont generate code for this field
         for attr in &field.attrs {
@@ -30,14 +32,24 @@ fn convert_to_table_impl(input: ItemStruct) -> proc_macro::TokenStream {
                     if meta.path.is_ident("save") {
                         //If the user wants to save then we let them xd
                         should_save = true;
-                        if should_save && should_skip && !attr.path().is_ident("serde") {
+
+                        if should_save && should_skip {
                             return Err(syn::Error::new(attr.span(), "You can only save or skip a field."));
                         }
                     }
+
                     if meta.path.is_ident("skip") {
-                        should_skip = true;
-                        if should_save && should_skip && !attr.path().is_ident("serde") {
-                            return Err(syn::Error::new(attr.span(), "You can only save or skip a field."));
+                        if attr.path().is_ident("serde") {
+                            should_skip_serde = true;
+                        }
+                        //If attr.path().is_ident("table")
+                        else {
+                            //If the user wants to skip then we set the bool
+                            should_skip = true;
+
+                            if should_save && should_skip {
+                                return Err(syn::Error::new(attr.span(), "You can only save or skip a field."));
+                            }
                         }
                     }
 
@@ -47,12 +59,13 @@ fn convert_to_table_impl(input: ItemStruct) -> proc_macro::TokenStream {
                     Ok(_) => {},
                     Err(_) => {return quote!(compile_error!("You can only save or skip a field.");).into()}
                 };
-
-                //If we should skip this entry
-                if should_skip {
-                    continue 'field_gen;
-                }
             }
+        }
+
+        //We should only check for this after we have iterated over the attributes of said field 
+        //If we should skip this entry
+        if should_skip || (should_skip_serde && !should_save) {
+            continue 'field_gen;
         }
         
         //Name of the entry
