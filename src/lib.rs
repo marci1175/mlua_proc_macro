@@ -1,5 +1,5 @@
-use quote::quote;
-use syn::{Fields, ItemStruct};
+use quote::{quote, ToTokens};
+use syn::{parse_macro_input, Data, DeriveInput, Fields, ItemStruct, Type};
 
 #[proc_macro_derive(ToTable, attributes(table))]
 pub fn convert_to_table(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -38,10 +38,10 @@ fn convert_to_table_impl(input: ItemStruct) -> proc_macro::TokenStream {
                 }
             }
         }
-
+        
         //Name of the entry
         let ident = field.ident.as_ref().unwrap();
-        
+
         //Name of the entry as string
         let string = ident.to_string();
 
@@ -55,15 +55,16 @@ fn convert_to_table_impl(input: ItemStruct) -> proc_macro::TokenStream {
     }
 
     let name = &input.ident;
+    let name_as_string = name.to_string().to_lowercase();
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     //Create function
     quote! {
         impl #impl_generics #name #ty_generics #where_clause {
-            fn set_table_from_struct(&self, lua: &mlua::Lua) {
+            pub fn set_table_from_struct(&self, lua: &mlua::Lua) {
                 let table = lua.create_table().unwrap();
                 #(#statements)*
-                lua.globals().set("vars", table).unwrap();
+                lua.globals().set(#name_as_string, table).unwrap();
             }
         }
     }
