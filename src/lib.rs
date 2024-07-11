@@ -30,13 +30,13 @@ fn convert_to_table_impl(input: ItemStruct) -> proc_macro::TokenStream {
                     if meta.path.is_ident("save") {
                         //If the user wants to save then we let them xd
                         should_save = true;
-                        if should_save && should_skip {
+                        if should_save && should_skip && !attr.path().is_ident("serde") {
                             return Err(syn::Error::new(attr.span(), "You can only save or skip a field."));
                         }
                     }
                     if meta.path.is_ident("skip") {
                         should_skip = true;
-                        if should_save && should_skip {
+                        if should_save && should_skip && !attr.path().is_ident("serde") {
                             return Err(syn::Error::new(attr.span(), "You can only save or skip a field."));
                         }
                     }
