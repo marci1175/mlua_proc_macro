@@ -5,6 +5,8 @@ use mlua_proc_macro::ToTable;
 struct Application {
     frame_count: i64,
 
+    #[serde(skip)]
+    #[table(save)]
     info: Info,
 
     field1: String,
