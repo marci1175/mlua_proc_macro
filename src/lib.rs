@@ -1,5 +1,5 @@
-use quote::{quote, ToTokens};
-use syn::{parse_macro_input, Data, DeriveInput, Fields, ItemStruct, Type};
+use quote::quote;
+use syn::{Fields, ItemStruct};
 
 #[proc_macro_derive(ToTable, attributes(table))]
 pub fn convert_to_table(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -24,6 +24,10 @@ fn convert_to_table_impl(input: ItemStruct) -> proc_macro::TokenStream {
 
                 //Check if there is a skip attribute in the table or serde attribute
                 attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident("save") {
+                        //If the user wants to save then we let them xd
+                        return Ok(());
+                    }
                     if meta.path.is_ident("skip") {
                         should_skip = true;
                     }
@@ -45,9 +49,17 @@ fn convert_to_table_impl(input: ItemStruct) -> proc_macro::TokenStream {
         //Name of the entry as string
         let string = ident.to_string();
 
+        //Check if the field supports serde
+        quote! {
+            match serde_json::to_string(&self.#ident) {
+                Ok(_) => {TokenStream::new()},
+                Err(err) => {syn::Error::into_compiler_error},
+            }
+        };
+
         //Statement, this is the code representation of the automaticly added line
         let statement = quote! {
-            table.set(#string, serde_json::to_string(&self.#ident).unwrap());
+            table.set(#string, serde_json::to_string(&self.#ident).unwrap()).unwrap();
         };
 
         //Back up all the statements
