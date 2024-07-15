@@ -104,9 +104,7 @@ fn convert_to_table_impl(input: ItemStruct) -> proc_macro::TokenStream {
 
     //Create function
     quote! {
-        use mlua::UserData;
-
-        impl UserData for #impl_generics #name #ty_generics #where_clause {
+        impl mlua::UserData for #impl_generics #name #ty_generics #where_clause {
             fn add_fields<'lua, F: mlua::UserDataFields<'lua, Self>>(fields: &mut F) {
                 #(#statements)*
             }
