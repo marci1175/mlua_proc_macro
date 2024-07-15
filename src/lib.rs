@@ -34,7 +34,10 @@ fn convert_to_table_impl(input: ItemStruct) -> proc_macro::TokenStream {
                         should_save = true;
 
                         if should_save && should_skip {
-                            return Err(syn::Error::new(attr.span(), "You can only save or skip a field."));
+                            return Err(syn::Error::new(
+                                attr.span(),
+                                "You can only save or skip a field.",
+                            ));
                         }
                     }
 
@@ -48,26 +51,30 @@ fn convert_to_table_impl(input: ItemStruct) -> proc_macro::TokenStream {
                             should_skip = true;
 
                             if should_save && should_skip {
-                                return Err(syn::Error::new(attr.span(), "You can only save or skip a field."));
+                                return Err(syn::Error::new(
+                                    attr.span(),
+                                    "You can only save or skip a field.",
+                                ));
                             }
                         }
                     }
 
                     Ok(())
-                })
-                {
-                    Ok(_) => {},
-                    Err(_) => {return quote!(compile_error!("You can only save or skip a field.");).into()}
+                }) {
+                    Ok(_) => {}
+                    Err(_) => {
+                        return quote!(compile_error!("You can only save or skip a field.");).into()
+                    }
                 };
             }
         }
 
-        //We should only check for this after we have iterated over the attributes of said field 
+        //We should only check for this after we have iterated over the attributes of said field
         //If we should skip this entry
         if should_skip || (should_skip_serde && !should_save) {
             continue 'field_gen;
         }
-        
+
         //Name of the entry
         let ident = field.ident.as_ref().unwrap();
 
@@ -84,7 +91,7 @@ fn convert_to_table_impl(input: ItemStruct) -> proc_macro::TokenStream {
 
         //Statement, this is the code representation of the automaticly added line
         let statement = quote! {
-            table.set(#string, serde_json::to_string(&self.#ident).unwrap()).unwrap();
+            fields.add_field_method_get(#string, |_, this| { Ok(serde_json::to_string(&this.#ident).unwrap()) });
         };
 
         //Back up all the statements
@@ -97,11 +104,17 @@ fn convert_to_table_impl(input: ItemStruct) -> proc_macro::TokenStream {
 
     //Create function
     quote! {
-        impl #impl_generics #name #ty_generics #where_clause {
-            pub fn set_table_from_struct(&self, lua: &mlua::Lua) {
-                let table = lua.create_table().unwrap();
+        use mlua::UserData;
+
+        impl UserData for #impl_generics #name #ty_generics #where_clause {
+            fn add_fields<'lua, F: mlua::UserDataFields<'lua, Self>>(fields: &mut F) {
                 #(#statements)*
-                lua.globals().set(#name_as_string, table).unwrap();
+            }
+        }
+
+        impl #impl_generics #name #ty_generics #where_clause {
+            pub fn set_lua_table_function(self, lua: &Lua) {
+                lua.globals().set(#name_as_string, self).unwrap();
             }
         }
     }
